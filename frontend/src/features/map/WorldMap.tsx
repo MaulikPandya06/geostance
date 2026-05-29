@@ -4,94 +4,71 @@ import { feature } from "topojson-client";
 import worldData from "./world-110m.json";
 import colorScale from "../../map/utils/colorScale";
 import { fetchWithLoading } from "../../services/fetchWithLoading";
+import type { ViewMode } from "../../App";
+
+// Vote → fill colour mapping (matches legend)
+const VOTE_COLOR: Record<string, string> = {
+  yes:     "#22c55e",   // green-500
+  no:      "#ef4444",   // red-500
+  abstain: "#eab308",   // yellow-500
+  absent:  "#9ca3af",   // gray-400
+};
+const NO_DATA_COLOR = "#1f2937";   // gray-800
+
+const VOTE_LABEL: Record<string, string> = {
+  yes:     "In Favour",
+  no:      "Against",
+  abstain: "Abstain",
+  absent:  "Absent / No Vote",
+};
 
 type Props = {
+  viewMode: ViewMode;
   heatmapData: any[];
   selectedEvent: any;
-
   setSelectedCountry: (country: any) => void;
-
   setCountryStatements: (statements: any[]) => void;
+  voteMapData: Record<string, string>;
 };
 
 export default function WorldMap({
+  viewMode,
   heatmapData,
   selectedEvent,
   setSelectedCountry,
   setCountryStatements,
+  voteMapData,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     if (!svgRef.current) return;
 
-    const svg = d3.select(svgRef.current);
-
-    const width = svgRef.current.clientWidth;
+    const svg    = d3.select(svgRef.current);
+    const width  = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
     svg.selectAll("*").remove();
 
-    // 🌍 Geo data
-    // const geo = feature(
-    //   worldData as any,
-    //   (worldData as any).objects.countries
-    // );
+    // Geo data
     const objectKey =
-      (worldData as any).objects.countries
-        ? "countries"
-        : "topo";
-
+      (worldData as any).objects.countries ? "countries" : "topo";
     const geo = feature(
       worldData as any,
       (worldData as any).objects[objectKey]
     );
 
-    // 🌍 Projection
-    // const projection = d3
-    //   .geoNaturalEarth1()
-    //   .scale(width / 6.5)
-    //   .translate([width / 2, height / 2]);
-
+    // Projection
     const projection = d3.geoNaturalEarth1().fitExtent(
-      [
-        [16, 16],
-        [width - 16, height - 16],
-      ],
+      [[16, 16], [width - 16, height - 16]],
       geo as any
     );
-
     const path = d3.geoPath(projection);
 
-
-    // 🔥 Dummy data
-    // const data: Record<string, number> = {
-    //   USA: 12,
-    //   IND: 18,
-    //   RUS: 31,
-    //   FRA: 24,
-    //   BRA: 7,
-    //   AUS: 5,
-    //   SAU: 65,
-    //   ZAF: 8,
-    // };
-
-    // 🎨 Color scale
-    // const colorScale = d3
-    //   .scaleThreshold<number, string>()
-    //   .domain([1, 5, 20, 50])
-    //   .range([
-    //     "#374151",
-    //     "#facc15",
-    //     "#fb923c",
-    //     "#f97316",
-    //     "#dc2626",
-    //   ]);
-
-    // 🌍 Main group (for zoom)
+    // Main group (for zoom)
     const g = svg.append("g");
 
-    // 🧠 Tooltip div
+    // Tooltip
     const tooltip = d3
       .select("body")
       .append("div")
@@ -104,172 +81,124 @@ export default function WorldMap({
       .style("pointer-events", "none")
       .style("opacity", 0);
 
-    // 🌍 Draw countries
+    // ── Country paths ─────────────────────────────────────────────────────
+
     g.selectAll("path")
       .data((geo as any).features)
       .join("path")
       .attr("d", path as any)
-      // .attr("fill", (d: any) => {
-      //   const countryId =
-      //     d.id ||
-      //     d.properties?.ISO_A3 ||
-      //     d.properties?.ISO_A2;
-      //   const value = data[countryId] || 0;
-      //   return colorScale(value);
-      // })
+
+      // Fill: UN voting mode uses vote colour; statements mode uses heatmap
       .attr("fill", (d: any) => {
-        const country = heatmapData.find(
-          (c) => c.isoa3_code === d.properties.ISO_A3
-        );
-
-        const count = country?.statement_count || 0;
-
-        return colorScale(count);
+        const iso3 = d.properties?.ISO_A3;
+        if (viewMode === "un_voting") {
+          const vote = voteMapData[iso3];
+          return vote ? VOTE_COLOR[vote] ?? NO_DATA_COLOR : NO_DATA_COLOR;
+        }
+        const country = heatmapData.find((c) => c.isoa3_code === iso3);
+        return colorScale(country?.statement_count ?? 0);
       })
+
       .attr("stroke", "#111827")
       .attr("stroke-width", 0.5)
       .style("cursor", "pointer")
 
-      // On click, set selected country and fetch statements
+      // Click handler
       .on("click", async function (_, d: any) {
-        const countryCode = d.properties?.ISO_A3;
+        const iso3        = d.properties?.ISO_A3;
+        const countryName = d.properties?.name || d.properties?.NAME || "Unknown";
+        const iso2        = (d.properties?.ISO_A2 || "").toLowerCase();
+
+        if (viewMode === "un_voting") {
+          // In voting mode just set the selected country — no fetch needed
+          setSelectedCountry({
+            isoa3_code:   iso3,
+            country_name: countryName,
+            isoa2_code:   iso2,
+          });
+          return;
+        }
+
+        // Statements mode: fetch country statements from API
+        if (!iso3 || !selectedEvent) return;
         const API_URL = import.meta.env.VITE_API_URL;
-
-        if (!countryCode || !selectedEvent) return;
-
         try {
-          // const res = await fetch(
           const res = await fetchWithLoading(
-            `${API_URL}/api/events/${selectedEvent.id}/countries/${countryCode}/statements/`
+            `${API_URL}/api/events/${selectedEvent.id}/countries/${iso3}/statements/`
           );
-
           const data = await res.json();
-
           setCountryStatements(data.statements);
-
-          if (data.country) {
-            setSelectedCountry(data.country);
-          }
+          if (data.country) setSelectedCountry(data.country);
         } catch (err) {
           console.error(err);
         }
       })
 
-      // 🔥 Hover START
-      .on("mouseover", function (event, d: any) {
-        event = event
-        d3.select(this)
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 1.5);
+      // Hover
+      .on("mouseover", function (_, d: any) {
+        d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1.5);
 
-        const countryId =
-          d.id ||
-          d.properties?.ISO_A3 ||
-          d.properties?.ISO_A2;
+        const iso3        = d.properties?.ISO_A3;
+        const countryName = d.properties?.name || d.properties?.NAME || "Unknown";
 
-        // 🔥 Get real backend data
-        const country = heatmapData.find(
-          (c) => c.isoa3_code === countryId
-        );
-
-        const value = country?.statement_count || 0;
-        console.log("****d",d.properties)
-        // 🌍 Country name
-        const countryName =
-          d.properties?.name ||
-          d.properties?.NAME ||
-          "Unknown";
+        let detail = "";
+        if (viewMode === "un_voting") {
+          const vote = voteMapData[iso3];
+          const label = vote ? VOTE_LABEL[vote] ?? vote : "No Data";
+          const color = vote ? VOTE_COLOR[vote] ?? "#6b7280" : "#6b7280";
+          detail = `<div style="font-size:11px;color:${color};margin-top:2px;">${label}</div>`;
+        } else {
+          const country = heatmapData.find((c) => c.isoa3_code === iso3);
+          const count   = country?.statement_count ?? 0;
+          detail = `<div style="font-size:11px;color:#9ca3af;margin-top:2px;">${count} statement${count !== 1 ? "s" : ""}</div>`;
+        }
 
         tooltip
           .style("opacity", 1)
-          .html(`
-            <div style="font-weight:600">
-              ${countryName}
-            </div>
-
-            <div style="
-              font-size:11px;
-              color:#9ca3af;
-              margin-top:2px;
-            ">
-              ${value} statements
-            </div>
-          `);
+          .html(`<div style="font-weight:600">${countryName}</div>${detail}`);
       })
 
       .on("mousemove", function (event) {
         tooltip
           .style("left", event.pageX + 10 + "px")
-          .style("top", event.pageY - 20 + "px");
+          .style("top",  event.pageY - 20 + "px");
       })
 
       .on("mouseout", function () {
         d3.select(this).attr("stroke", "#111827").attr("stroke-width", 0.5);
-
         tooltip.style("opacity", 0);
       });
 
-    // 🔍 Zoom behavior
+    // ── Zoom ─────────────────────────────────────────────────────────────
+
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 8])
-      .on("zoom", (event) => {
-        g.attr("transform", event.transform);
-      });
+      .on("zoom", (event) => g.attr("transform", event.transform));
 
     svg.call(zoom as any);
 
-    // 🔘 Controls
-    const zoomIn = () => {
-      svg.transition().call(zoom.scaleBy as any, 1.3);
-    };
+    const zoomIn  = () => svg.transition().call(zoom.scaleBy as any, 1.3);
+    const zoomOut = () => svg.transition().call(zoom.scaleBy as any, 0.7);
+    const reset   = () =>
+      svg.transition().duration(500).call(zoom.transform as any, d3.zoomIdentity);
 
-    const zoomOut = () => {
-      svg.transition().call(zoom.scaleBy as any, 0.7);
-    };
-
-    const reset = () => {
-      svg
-        .transition()
-        .duration(500)
-        .call(zoom.transform as any, d3.zoomIdentity);
-    };
-
-    // Attach to buttons
     document.getElementById("zoom-in")?.addEventListener("click", zoomIn);
     document.getElementById("zoom-out")?.addEventListener("click", zoomOut);
     document.getElementById("reset")?.addEventListener("click", reset);
 
-    // Cleanup
-    return () => {
-      tooltip.remove();
-    };
-  }, [heatmapData]);
+    return () => { tooltip.remove(); };
+
+  // Re-render whenever coloring data or mode changes
+  }, [heatmapData, voteMapData, viewMode]);
 
   return (
     <div className="w-full h-full relative">
-      {/* Controls */}
+      {/* Zoom controls */}
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-        <button
-          id="zoom-in"
-          className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700"
-        >
-          +
-        </button>
-
-        <button
-          id="zoom-out"
-          className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700"
-        >
-          −
-        </button>
-
-        <button
-          id="reset"
-          className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-xs"
-        >
-          Reset
-        </button>
+        <button id="zoom-in"  className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-white">+</button>
+        <button id="zoom-out" className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-white">−</button>
+        <button id="reset"    className="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-white text-xs">Reset</button>
       </div>
 
       <svg
