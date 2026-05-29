@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HeatmapCountry } from "../../types/heatmap";
 import { fetchWithLoading } from "../../services/fetchWithLoading";
-import type { ViewMode } from "../../App";
+import type { ViewMode, ResolutionType } from "../../App";
 
 type EventType = {
   id: number;
@@ -9,14 +9,6 @@ type EventType = {
   description: string;
   start_date: string;
   end_date: string | null;
-};
-
-type ResolutionType = {
-  id: number;
-  un_symbol: string;
-  title: string;
-  vote_date: string;
-  body: string;
 };
 
 type Props = {
@@ -30,6 +22,8 @@ type Props = {
   setVoteMapData: (data: Record<string, string>) => void;
   setVotesSummary: (summary: Record<string, number>) => void;
   setVotesByCategory: (byCategory: Record<string, any[]>) => void;
+  selectedResolutions: ResolutionType[];
+  setSelectedResolutions: (rs: ResolutionType[]) => void;
 };
 
 export default function EventsPanel({
@@ -43,6 +37,8 @@ export default function EventsPanel({
   setVoteMapData,
   setVotesSummary,
   setVotesByCategory,
+  selectedResolutions,
+  setSelectedResolutions,
 }: Props) {
   const [events, setEvents] = useState<EventType[]>([]);
   const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
@@ -354,51 +350,87 @@ export default function EventsPanel({
                 <div className="mt-1 ml-3 border-l border-gray-800 pl-3 space-y-1">
                   {resolutions.map((res) => {
                     const isResSelected = selectedResolution?.id === res.id;
+                    const isChecked     = selectedResolutions.some((r) => r.id === res.id);
+
+                    const toggleCheck = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      if (isChecked) {
+                        setSelectedResolutions(selectedResolutions.filter((r) => r.id !== res.id));
+                      } else {
+                        setSelectedResolutions([...selectedResolutions, res]);
+                      }
+                    };
+
                     return (
-                      <button
-                        key={res.id}
-                        onClick={() => handleResolutionClick(res)}
-                        className={`
-                          w-full rounded-xl border px-3 py-2.5 text-left
-                          transition-all duration-150
-                          ${
-                            isResSelected
-                              ? "border-blue-500/40 bg-blue-500/10"
-                              : "border-gray-800/60 bg-gray-900/40 hover:border-gray-700 hover:bg-gray-900/70"
-                          }
-                        `}
-                      >
-                        {/* Symbol badge */}
-                        <span
+                      <div key={res.id} className="flex items-start gap-2">
+                        {/* Checkbox */}
+                        <button
+                          onClick={toggleCheck}
+                          className="mt-2.5 shrink-0 flex items-center justify-center"
+                          aria-label={isChecked ? "Deselect resolution" : "Select resolution"}
+                        >
+                          <div
+                            className={`
+                              w-4 h-4 rounded border-[1.5px] flex items-center justify-center transition-all
+                              ${isChecked
+                                ? "bg-blue-500 border-blue-500"
+                                : "border-gray-600 hover:border-gray-400 bg-transparent"}
+                            `}
+                          >
+                            {isChecked && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Resolution row */}
+                        <button
+                          onClick={() => handleResolutionClick(res)}
                           className={`
-                            inline-block text-[10px] font-mono font-semibold
-                            px-1.5 py-0.5 rounded
+                            flex-1 rounded-xl border px-3 py-2.5 text-left
+                            transition-all duration-150
                             ${
                               isResSelected
-                                ? "bg-amber-500/20 text-amber-300"
-                                : "bg-gray-800 text-gray-400"
+                                ? "border-blue-500/40 bg-blue-500/10"
+                                : isChecked
+                                ? "border-blue-500/20 bg-blue-500/5"
+                                : "border-gray-800/60 bg-gray-900/40 hover:border-gray-700 hover:bg-gray-900/70"
                             }
                           `}
                         >
-                          {res.un_symbol || `#${res.id}`}
-                        </span>
+                          <span
+                            className={`
+                              inline-block text-[10px] font-mono font-semibold
+                              px-1.5 py-0.5 rounded
+                              ${
+                                isResSelected
+                                  ? "bg-amber-500/20 text-amber-300"
+                                  : "bg-gray-800 text-gray-400"
+                              }
+                            `}
+                          >
+                            {res.un_symbol || `#${res.id}`}
+                          </span>
 
-                        <p
-                          className={`mt-1 text-xs leading-snug ${
-                            isResSelected ? "text-blue-100" : "text-gray-300"
-                          }`}
-                        >
-                          {res.title.length > 58
-                            ? res.title.slice(0, 58) + "…"
-                            : res.title}
-                        </p>
+                          <p
+                            className={`mt-1 text-xs leading-snug ${
+                              isResSelected ? "text-blue-100" : "text-gray-300"
+                            }`}
+                          >
+                            {res.title.length > 52
+                              ? res.title.slice(0, 52) + "…"
+                              : res.title}
+                          </p>
 
-                        <p className="mt-0.5 text-[10px] text-gray-500">
-                          {res.vote_date
-                            ? new Date(res.vote_date).toLocaleDateString()
-                            : ""}
-                        </p>
-                      </button>
+                          <p className="mt-0.5 text-[10px] text-gray-500">
+                            {res.vote_date
+                              ? new Date(res.vote_date).toLocaleDateString()
+                              : ""}
+                          </p>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>

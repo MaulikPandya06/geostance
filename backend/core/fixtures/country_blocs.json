@@ -1,0 +1,125 @@
+{
+  "blocs": [
+    {
+      "name": "NATO",
+      "slug": "nato",
+      "description": "North Atlantic Treaty Organization — 32-member collective defence alliance.",
+      "members": [
+        "ALB","BEL","BGR","CAN","HRV","CZE","DNK","EST","FIN","FRA",
+        "DEU","GRC","HUN","ISL","ITA","LVA","LTU","LUX","MNE","NLD",
+        "MKD","NOR","POL","PRT","ROU","SVK","SVN","ESP","SWE","TUR",
+        "GBR","USA"
+      ]
+    },
+    {
+      "name": "European Union",
+      "slug": "eu",
+      "description": "Political and economic union of 27 European member states.",
+      "members": [
+        "AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA",
+        "DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD",
+        "POL","PRT","ROU","SVK","SVN","ESP","SWE"
+      ]
+    },
+    {
+      "name": "BRICS+",
+      "slug": "brics",
+      "description": "Brazil, Russia, India, China, South Africa + new 2024 members (Egypt, Ethiopia, Iran, UAE).",
+      "members": [
+        "BRA","RUS","IND","CHN","ZAF",
+        "EGY","ETH","IRN","ARE","SAU"
+      ]
+    },
+    {
+      "name": "G20",
+      "slug": "g20",
+      "description": "Group of Twenty — 19 major economies plus the EU and African Union.",
+      "members": [
+        "ARG","AUS","BRA","CAN","CHN","FRA","DEU","IND","IDN","ITA",
+        "JPN","KOR","MEX","RUS","SAU","ZAF","TUR","GBR","USA"
+      ]
+    },
+    {
+      "name": "G7",
+      "slug": "g7",
+      "description": "Group of Seven major advanced economies.",
+      "members": [
+        "CAN","FRA","DEU","ITA","JPN","GBR","USA"
+      ]
+    },
+    {
+      "name": "SCO",
+      "slug": "sco",
+      "description": "Shanghai Cooperation Organisation — Eurasian political, economic and security union.",
+      "members": [
+        "CHN","IND","KAZ","KGZ","PAK","RUS","TJK","UZB","IRN","BLR"
+      ]
+    },
+    {
+      "name": "Quad",
+      "slug": "quad",
+      "description": "Quadrilateral Security Dialogue — strategic forum: India, USA, Japan, Australia.",
+      "members": [
+        "IND","USA","JPN","AUS"
+      ]
+    },
+    {
+      "name": "ASEAN",
+      "slug": "asean",
+      "description": "Association of Southeast Asian Nations — 10 member states.",
+      "members": [
+        "BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","VNM"
+      ]
+    },
+    {
+      "name": "G77",
+      "slug": "g77",
+      "description": "Group of 77 — largest intergovernmental organisation of developing nations at the UN (134 members as of 2024).",
+      "members": [
+        "AFG","DZA","AGO","ATG","ARG","BHS","BHR","BGD","BRB","BLZ",
+        "BEN","BTN","BOL","BIH","BWA","BRA","BRN","BFA","BDI","CPV",
+        "KHM","CMR","CAF","TCD","CHL","CHN","COL","COM","COD","COG",
+        "CRI","CIV","CUB","DJI","DOM","ECU","EGY","SLV","GNQ","ERI",
+        "SWZ","ETH","FJI","GAB","GMB","GHA","GTM","GIN","GNB","GUY",
+        "HTI","HND","IND","IDN","IRN","IRQ","JAM","JOR","KEN","PRK",
+        "KWT","LAO","LBN","LSO","LBR","LBY","MDG","MWI","MYS","MDV",
+        "MLI","MHL","MRT","MUS","MEX","FSM","MNG","MAR","MOZ","MMR",
+        "NAM","NPL","NIC","NER","NGA","OMN","PAK","PAN","PNG","PRY",
+        "PER","PHL","QAT","RWA","KNA","LCA","VCT","WSM","STP","SAU",
+        "SEN","SLE","SLB","SOM","ZAF","SSD","LKA","SDN","SUR","SYR",
+        "TZA","THA","TLS","TGO","TON","TTO","TUN","TUR","TKM","UGA",
+        "ARE","URY","VUT","VEN","VNM","YEM","ZMB","ZWE"
+      ]
+    },
+    {
+      "name": "Non-Aligned Movement",
+      "slug": "nam",
+      "description": "Forum of 120 developing-world states not formally aligned with major power blocs.",
+      "members": [
+        "AFG","DZA","AGO","ATG","BHS","BHR","BGD","BLZ","BEN","BOL",
+        "BWA","BFA","BDI","CPV","KHM","CMR","CAF","TCD","COL","COM",
+        "COD","COG","CIV","CUB","DJI","ECU","EGY","ERI","ETH","GAB",
+        "GMB","GHA","GRD","GTM","GIN","GNB","GUY","HTI","HND","IND",
+        "IDN","IRN","IRQ","JAM","JOR","KEN","PRK","KWT","LAO","LBN",
+        "LSO","LBR","LBY","MDG","MWI","MDV","MLI","MRT","MUS","MNG",
+        "MAR","MOZ","MMR","NAM","NPL","NIC","NER","NGA","OMN","PAK",
+        "PNG","PRY","PER","PHL","QAT","RWA","LCA","VCT","WSM","STP",
+        "SAU","SEN","SLE","SLB","SOM","ZAF","LKA","SDN","SUR","SWZ",
+        "SYR","TZA","THA","TLS","TGO","TTO","TUN","TKM","UGA","ARE",
+        "URY","VEN","VNM","YEM","ZMB","ZWE"
+      ]
+    },
+    {
+      "name": "APAC",
+      "slug": "apac",
+      "description": "Asia-Pacific region — broad grouping of Asia and Pacific nations.",
+      "members": [
+        "AUS","BGD","BTN","BRN","KHM","CHN","FJI","IND","IDN","JPN",
+        "KAZ","KGZ","LAO","MYS","MDV","MNG","MMR","NPL","NZL","PAK",
+        "PNG","PHL","KOR","SGP","LKA","TWN","TJK","THA","TLS","TKM",
+        "UZB","VNM","WSM","VUT","TON","MHL","FSM","KIR","NRU","PLW",
+        "PRK","SLB","TUV"
+      ]
+    }
+  ]
+}

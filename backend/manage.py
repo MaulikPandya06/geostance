@@ -4,6 +4,13 @@ import os
 import sys
 from dotenv import load_dotenv
 
+# Force UTF-8 output on Windows so management commands can print
+# non-ASCII characters (arrows, em-dashes, etc.) without crashing.
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.platform == "win32" and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 def main():
     """Run administrative tasks."""

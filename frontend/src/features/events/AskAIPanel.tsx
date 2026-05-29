@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ResolutionType } from "../../App";
 
-type ResolutionType = {
-  id: number;
-  un_symbol: string;
-  title: string;
-  vote_date: string;
-  body: string;
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Message = {
+  id:       string;
+  role:     "user" | "ai";
+  content:  string;
+  loading?: boolean;
 };
 
 type Feature = {
-  key: string;
-  icon: string;
-  label: string;
+  key:         string;
+  label:       string;
   description: string;
-  isCustom?: boolean;
+  icon:        React.ReactNode;
 };
 
 type Props = {
@@ -21,90 +22,167 @@ type Props = {
   onClose: () => void;
 };
 
+// ── Feature definitions ───────────────────────────────────────────────────────
+
 const FEATURES: Feature[] = [
   {
     key: "analyze",
-    icon: "⊙",
     label: "Analyze the selected resolutions",
     description: "Summary, key points, and voting patterns",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <circle cx="11" cy="11" r="7" strokeLinecap="round" />
+        <path strokeLinecap="round" d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
+      </svg>
+    ),
   },
   {
     key: "compare",
-    icon: "⇄",
     label: "Compare voting behavior",
     description: "See how countries voted differently",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+      </svg>
+    ),
   },
   {
     key: "blocs",
-    icon: "◎",
     label: "Identify key blocs and alignments",
     description: "Discover voting blocs and regional patterns",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="3" />
+        <path strokeLinecap="round" d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+      </svg>
+    ),
   },
   {
     key: "timeline",
-    icon: "◷",
     label: "Track changes over time",
     description: "Analyze shifts between these resolutions",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <circle cx="12" cy="12" r="9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 3" />
+      </svg>
+    ),
   },
   {
     key: "themes",
-    icon: "◈",
     label: "Extract key themes and topics",
     description: "What are the main issues discussed?",
-  },
-  {
-    key: "custom",
-    icon: "✦",
-    label: "Custom analysis",
-    description: "Specify countries and your own question",
-    isCustom: true,
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10M7 11h6M7 15h8" />
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+      </svg>
+    ),
   },
 ];
 
-function DownloadIcon() {
+// ── Small helpers ─────────────────────────────────────────────────────────────
+
+function SparklesIcon() {
   return (
-    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
     </svg>
   );
 }
 
-function Spinner() {
+function SendIcon() {
   return (
-    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
     </svg>
   );
 }
+
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce"
+          style={{ animationDelay: `${i * 0.15}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Simple markdown renderer ───────────────────────────────────────────────────
+// Handles **bold**, bullet lines, numbered lines, and paragraph breaks.
+
+function MarkdownContent({ text }: { text: string }) {
+  const lines = text.split("\n");
+
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (line.trim() === "") return <div key={i} className="h-2" />;
+
+        // Render inline bold spans
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        const rendered = parts.map((part, j) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={j} className="font-semibold text-white">
+              {part.slice(2, -2)}
+            </strong>
+          ) : (
+            <span key={j}>{part}</span>
+          )
+        );
+
+        return (
+          <p key={i} className="text-xs text-gray-200 leading-relaxed">
+            {rendered}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
-  const [loadingFeature, setLoadingFeature] = useState<string | null>(null);
-  const [question, setQuestion]             = useState("");
-  const [countries, setCountries]           = useState("");
-  const [error, setError]                   = useState<string | null>(null);
-
+  const [messages, setMessages]   = useState<Message[]>([]);
+  const [input, setInput]         = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef            = useRef<HTMLDivElement>(null);
+  const inputRef                  = useRef<HTMLTextAreaElement>(null);
   const API_URL = import.meta.env.VITE_API_URL;
-  const ids      = selectedResolutions.map((r) => r.id);
+  const ids     = selectedResolutions.map((r) => r.id);
 
-  const generate = async (feature: string) => {
-    if (ids.length === 0) return;
-    if (feature === "custom" && !question.trim() && !countries.trim()) {
-      setError("Enter a question or specify countries for custom analysis.");
-      return;
-    }
+  // Auto-scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    setError(null);
-    setLoadingFeature(feature);
+  const sendMessage = async (feature: string, displayText: string) => {
+    if (isLoading || ids.length === 0) return;
 
-    const body: Record<string, unknown> = { resolution_ids: ids, feature };
-    if (feature === "custom") {
-      if (question.trim())  body.question  = question.trim();
-      if (countries.trim()) body.countries = countries.split(",").map((c) => c.trim()).filter(Boolean);
-    }
+    const userMsgId = `u-${Date.now()}`;
+    const aiMsgId   = `a-${Date.now()}`;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, role: "user",  content: displayText },
+      { id: aiMsgId,   role: "ai",    content: "", loading: true },
+    ]);
+    setIsLoading(true);
+    setInput("");
 
     try {
-      const resp = await fetch(`${API_URL}/api/un-resolutions/generate-report/`, {
+      const body: Record<string, unknown> = { resolution_ids: ids, feature };
+      if (feature === "custom") body.question = displayText;
+
+      const resp = await fetch(`${API_URL}/api/un-resolutions/ask/`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
@@ -115,31 +193,45 @@ export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
         throw new Error(msg || `Server error ${resp.status}`);
       }
 
-      // Trigger download
-      const blob        = await resp.blob();
-      const url         = URL.createObjectURL(blob);
-      const a           = document.createElement("a");
-      const disposition = resp.headers.get("Content-Disposition") ?? "";
-      const nameMatch   = disposition.match(/filename="?([^"]+)"?/);
-      a.download        = nameMatch?.[1] ?? `GeoStance_${feature}_report.docx`;
-      a.href            = url;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const data = await resp.json();
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMsgId ? { ...m, content: data.answer, loading: false } : m
+        )
+      );
     } catch (err: any) {
-      setError(err.message ?? "Generation failed — please retry.");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === aiMsgId
+            ? { ...m, content: `Error: ${err.message ?? "Request failed — please retry."}`, loading: false }
+            : m
+        )
+      );
     } finally {
-      setLoadingFeature(null);
+      setIsLoading(false);
+      inputRef.current?.focus();
     }
   };
 
-  const isGenerating = loadingFeature !== null;
+  const handleSend = () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    sendMessage("custom", text);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const showPrompts = messages.length === 0;
 
   return (
     <aside
       className="
-        w-full sm:w-[400px] xl:w-[420px] shrink-0
+        w-full sm:w-[420px] xl:w-[440px] shrink-0
         border-l border-gray-800/80 bg-[#030712]
         flex flex-col min-h-0
       "
@@ -148,6 +240,7 @@ export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
       <div className="shrink-0 border-b border-gray-800/80 bg-gradient-to-b from-[#061120] to-[#030712] px-4 pt-4 pb-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
+            <SparklesIcon />
             <span className="text-[13px] font-semibold text-white tracking-tight">
               Ask GeoStance AI
             </span>
@@ -173,18 +266,18 @@ export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
         </p>
 
         {/* Selected resolution cards */}
-        <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 flex-wrap max-h-24 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {selectedResolutions.map((res) => (
             <div
               key={res.id}
-              className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-2.5 py-2"
+              className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-2.5 py-2 min-w-0 flex-1 basis-[46%]"
             >
               <span className="font-mono text-[10px] font-semibold bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
                 {res.un_symbol || `#${res.id}`}
               </span>
               <div className="min-w-0">
-                <p className="text-xs text-gray-200 leading-snug truncate">
-                  {res.title.length > 50 ? res.title.slice(0, 50) + "…" : res.title}
+                <p className="text-[11px] text-gray-200 leading-snug truncate">
+                  {res.title.length > 40 ? res.title.slice(0, 40) + "…" : res.title}
                 </p>
                 <p className="text-[10px] text-gray-500 mt-0.5">
                   {res.vote_date
@@ -192,7 +285,6 @@ export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
                         year: "numeric", month: "short", day: "numeric",
                       })
                     : ""}
-                  {res.body ? ` · ${res.body}` : ""}
                 </p>
               </div>
             </div>
@@ -200,147 +292,158 @@ export default function AskAIPanel({ selectedResolutions, onClose }: Props) {
         </div>
       </div>
 
-      {/* ── Scrollable body ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* ── Body ── */}
+      {showPrompts ? (
+        /* Suggested prompts — shown before any messages */
+        <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">
+            Suggested prompts
+          </p>
 
-        <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">
-          Suggested prompts
-        </p>
+          <div className="space-y-2">
+            {FEATURES.map((feat) => (
+              <button
+                key={feat.key}
+                disabled={isLoading}
+                onClick={() => sendMessage(feat.key, feat.label)}
+                className="
+                  w-full flex items-center gap-3 px-3 py-3
+                  rounded-xl border border-gray-800 bg-gray-900/40
+                  hover:border-gray-700 hover:bg-gray-900/70
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all text-left group
+                "
+              >
+                <div className="
+                  flex h-8 w-8 shrink-0 items-center justify-center
+                  rounded-lg border border-gray-700 bg-gray-800 text-gray-400
+                  group-hover:border-blue-500/40 group-hover:bg-blue-500/10 group-hover:text-blue-300
+                  transition-all
+                ">
+                  {feat.icon}
+                </div>
 
-        {/* Feature buttons */}
-        {FEATURES.filter((f) => !f.isCustom).map((feat) => {
-          const isLoading = loadingFeature === feat.key;
-          return (
-            <button
-              key={feat.key}
-              disabled={isGenerating}
-              onClick={() => generate(feat.key)}
-              className="
-                w-full flex items-center gap-3 px-3 py-3
-                rounded-xl border border-gray-800 bg-gray-900/40
-                hover:border-gray-700 hover:bg-gray-900/70
-                disabled:opacity-40 disabled:cursor-not-allowed
-                transition-all text-left group
-              "
-            >
-              {/* Icon */}
-              <div className="
-                flex h-8 w-8 shrink-0 items-center justify-center
-                rounded-lg border border-gray-700 bg-gray-800
-                text-gray-400 text-sm
-                group-hover:border-blue-500/40 group-hover:bg-blue-500/10 group-hover:text-blue-300
-                transition-all
-              ">
-                {isLoading ? <Spinner /> : feat.icon}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-gray-200 group-hover:text-white transition-colors leading-snug">
+                    {feat.label}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    {feat.description}
+                  </p>
+                </div>
+
+                <svg
+                  className="w-4 h-4 shrink-0 text-gray-600 group-hover:text-gray-400 transition-colors"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* Chat thread — shown after first message */
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {messages.map((msg) =>
+            msg.role === "user" ? (
+              <div key={msg.id} className="flex justify-end">
+                <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600/25 border border-blue-500/20 px-3 py-2.5">
+                  <p className="text-xs text-blue-100 leading-relaxed">{msg.content}</p>
+                </div>
               </div>
-
-              {/* Text */}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-200 group-hover:text-white transition-colors leading-snug">
-                  {feat.label}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                  {feat.description}
-                </p>
-              </div>
-
-              {/* Arrow / spinner */}
-              <div className="shrink-0 text-gray-600 group-hover:text-gray-400 transition-colors">
-                {isLoading
-                  ? null
-                  : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+            ) : (
+              <div key={msg.id} className="flex gap-2.5">
+                {/* AI avatar */}
+                <div className="mt-0.5 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/20 shrink-0 flex items-center justify-center">
+                  <SparklesIcon />
+                </div>
+                <div className="flex-1 min-w-0 rounded-2xl rounded-tl-sm border border-gray-800 bg-gray-900/60 px-3 py-2.5">
+                  {msg.loading ? (
+                    <LoadingDots />
+                  ) : (
+                    <MarkdownContent text={msg.content} />
                   )}
+                </div>
               </div>
-            </button>
-          );
-        })}
+            )
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      )}
 
-        {/* Custom section */}
-        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-3 space-y-2.5 mt-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-gray-300">✦ Custom analysis</span>
-            <span className="text-[10px] text-gray-500">— specify countries or a question</span>
+      {/* ── Input footer ── */}
+      <div className="shrink-0 border-t border-gray-800 px-4 pt-3 pb-3">
+        {/* Compact prompt chips when in chat mode */}
+        {!showPrompts && (
+          <div className="flex gap-1.5 flex-wrap mb-3">
+            {FEATURES.map((feat) => (
+              <button
+                key={feat.key}
+                disabled={isLoading}
+                onClick={() => sendMessage(feat.key, feat.label)}
+                className="
+                  flex items-center gap-1 px-2 py-1 rounded-lg
+                  border border-gray-800 bg-gray-900/50 text-[10px] text-gray-400
+                  hover:border-gray-700 hover:text-gray-200 hover:bg-gray-800
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all
+                "
+              >
+                <span className="text-gray-500">{feat.icon}</span>
+                {feat.label.split(" ").slice(0, 2).join(" ")}
+              </button>
+            ))}
           </div>
+        )}
 
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">
-              Countries (comma-separated, optional)
-            </label>
-            <input
-              type="text"
-              value={countries}
-              onChange={(e) => setCountries(e.target.value)}
-              placeholder="e.g. Russia, China, India, France"
-              disabled={isGenerating}
-              className="
-                w-full rounded-lg border border-gray-700 bg-gray-800
-                px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600
-                focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20
-                disabled:opacity-40
-              "
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 block">
-              Question (optional)
-            </label>
-            <textarea
-              rows={2}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask anything about the selected resolutions…"
-              disabled={isGenerating}
-              className="
-                w-full rounded-lg border border-gray-700 bg-gray-800
-                px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 resize-none
-                focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20
-                disabled:opacity-40
-              "
-            />
-          </div>
-
-          <button
-            onClick={() => generate("custom")}
-            disabled={isGenerating}
+        {/* Text input row */}
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              // Auto-grow up to 4 rows
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 96) + "px";
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything about the selected resolutions…"
+            disabled={isLoading}
             className="
-              w-full flex items-center justify-center gap-2
-              rounded-lg border border-blue-500/30 bg-blue-500/10
-              px-3 py-2 text-xs font-semibold text-blue-300
-              hover:bg-blue-500/20 hover:border-blue-500/50
-              disabled:opacity-40 disabled:cursor-not-allowed
+              flex-1 resize-none rounded-xl border border-gray-700 bg-gray-800/80
+              px-3 py-2.5 text-xs text-gray-200 placeholder-gray-600
+              focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20
+              disabled:opacity-50 leading-relaxed
+              overflow-hidden
+            "
+            style={{ minHeight: "38px", maxHeight: "96px" }}
+          />
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !input.trim()}
+            className="
+              shrink-0 w-9 h-9 rounded-xl flex items-center justify-center
+              bg-blue-600 text-white
+              hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed
               transition-all
             "
+            aria-label="Send"
           >
-            {loadingFeature === "custom" ? <Spinner /> : <DownloadIcon />}
-            {loadingFeature === "custom" ? "Generating report…" : "Generate custom report"}
+            {isLoading ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <SendIcon />
+            )}
           </button>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Generating banner */}
-        {isGenerating && (
-          <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2.5 text-xs text-blue-300 flex items-center gap-2">
-            <Spinner />
-            <span>
-              Generating report — this may take 30–60 seconds. The file will download automatically.
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="shrink-0 border-t border-gray-800 px-4 py-3">
-        <p className="text-[10px] text-gray-600 text-center leading-relaxed">
+        <p className="text-[10px] text-gray-600 text-center mt-2.5 leading-relaxed">
           AI responses may contain inaccuracies. Verify critical information.
         </p>
       </div>

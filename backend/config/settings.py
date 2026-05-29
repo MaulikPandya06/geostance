@@ -32,7 +32,7 @@ SECRET_KEY = config("SECRET_KEY", default="unsafe-secret")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = ['geovoice.onrender.com', "geostance.in", "www.geostance.in",]
+ALLOWED_HOSTS = ['geovoice.onrender.com', "geostance.in", "www.geostance.in", "*"]
 ALLOWED_HOSTS.extend(
     filter(
         None,
@@ -95,22 +95,22 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    # "default": {
-    #     "ENGINE": "django.db.backends.postgresql",
-    #     "NAME": config("DB_NAME", default="geovoice"),
-    #     "USER": config("DB_USER", default="postgres"),
-    #     "PASSWORD": config(
-    #         "DB_PASSWORD",
-    #         default="postgres",
-    #     ),
-    #     "HOST": config("DB_HOST", default="localhost"),
-    #     "PORT": config("DB_PORT", default="5432"),
-    # }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("DB_NAME", default="geovoice"),
+        "USER": config("DB_USER", default="postgres"),
+        "PASSWORD": config(
+            "DB_PASSWORD",
+            default="postgres",
+        ),
+        "HOST": config("DB_HOST", default="localhost"),
+        "PORT": config("DB_PORT", default="5432"),
+    }
 
     # Neon DB
-    "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL")
-    )
+    # "default": dj_database_url.config(
+    #     default=os.environ.get("DATABASE_URL")
+    # )
 }
 
 
@@ -206,6 +206,17 @@ CELERY_BEAT_SCHEDULE = {
     "sync_and_classify_every_15_min": {
         "task": "core.tasks.sync_and_classify",
         "schedule": timedelta(minutes=15),
+    },
+    # Fetch new UN votes from UNDL daily (14-day lookback catches late postings)
+    "fetch_new_un_votes_daily": {
+        "task": "core.tasks.fetch_new_un_votes",
+        "schedule": timedelta(hours=24),
+        "kwargs": {"lookback_days": 14},
+    },
+    # Weekly: re-classify any resolutions that are still unlinked to an Event
+    "classify_unlinked_resolutions_weekly": {
+        "task": "core.tasks.bulk_classify_resolutions",
+        "schedule": timedelta(days=7),
     },
 }
 
