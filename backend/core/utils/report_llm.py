@@ -286,28 +286,34 @@ Format: Use **Theme Name**: explanation format for the list."""
 
 
 def generate_custom(ctx: ReportContext, question: str) -> str:
-    """Section 6 — Custom question / country-specific full report."""
-    res_blocks    = "\n\n".join(_fmt_resolution(r) for r in ctx.resolutions)
-    country_block = _fmt_countries(ctx.country_rows)
-    bloc_block    = _fmt_blocs(ctx.bloc_rows)
+    """Chat endpoint — free-form question scoped to the selected resolutions."""
+    symbols    = ", ".join(r.un_symbol for r in ctx.resolutions)
+    res_blocks = "\n\n".join(_fmt_resolution(r) for r in ctx.resolutions)
+    bloc_block = _fmt_blocs(ctx.bloc_rows)
 
-    user = f"""A geopolitical analyst has asked: "{question}"
+    # For multi-resolution queries show each country's vote per resolution so the
+    # LLM sees vote changes (e.g. abstain → yes) rather than only the primary vote.
+    if ctx.is_multi:
+        country_block = _fmt_countries_multi(
+            ctx.country_rows, [r.un_symbol for r in ctx.resolutions]
+        )
+    else:
+        country_block = _fmt_countries(ctx.country_rows)
 
-Use ONLY the data below to answer. Be specific, structured, and analytical.
-
-RESOLUTION DATA:
-{res_blocks}
-
-COUNTRY VOTES:
-{country_block}
-
-BLOC ALIGNMENTS:
-{bloc_block}
-
-TAGS: {", ".join(ctx.all_tags[:15])}"""
+    user = (
+        f"SELECTED RESOLUTIONS: {symbols}\n\n"
+        f"USER QUESTION: \"{question}\"\n\n"
+        "Use the data below to answer. Draw on voting records, country positions, "
+        "bloc alignments, and themes as needed. If the question is unrelated to "
+        "geopolitics or the UN, say so.\n\n"
+        f"RESOLUTION DATA:\n{res_blocks}\n\n"
+        f"COUNTRY VOTES (per resolution):\n{country_block}\n\n"
+        f"BLOC ALIGNMENTS:\n{bloc_block}\n\n"
+        f"TAGS: {', '.join(ctx.all_tags[:15])}"
+    )
 
     time.sleep(_CALL_DELAY)
-    return _call(_SYSTEM, user)
+    return _call(_SYSTEM_CHAT, user)
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
