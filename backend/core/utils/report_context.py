@@ -5,17 +5,13 @@ Assembles all structured data needed to generate a resolution analysis report.
 Pure DB queries — no LLM calls here.
 
 The top-20 country selection is deterministic:
-  Priority 1: All "No" voters (most geopolitically significant position)
-  Priority 2: "Abstain" voters ranked by significance tier
-  Priority 3: "Yes" voters ranked by significance tier
+  Priority 1: Vote type — No > Abstain > Yes > Absent  (dissenting voices first)
+  Priority 2: Economy rank — larger GDP = higher priority within each vote group
+  Priority 3: ISO-3 alphabetical as tiebreaker
   Capped at 20 total.
 
-Significance tiers (descending):
-  T1: P5 permanent SC members
-  T2: G7 members
-  T3: G20 members
-  T4: BRICS members
-  T5: Everyone else (alphabetical)
+Economy ranks source: IMF World Economic Outlook 2024 (nominal GDP).
+Countries outside the top 50 receive rank 999 and are selected last.
 """
 
 from __future__ import annotations
@@ -26,27 +22,68 @@ from typing import Literal
 
 from core.models import Country, CountryBloc, UNResolution, UNVote
 
-# ── Significance tiers for country ranking ────────────────────────────────────
-_P5   = {"USA", "GBR", "FRA", "CHN", "RUS"}
-_G7   = {"USA", "GBR", "FRA", "DEU", "ITA", "JPN", "CAN"}
-_G20  = {
-    "USA", "GBR", "FRA", "DEU", "ITA", "JPN", "CAN",
-    "CHN", "RUS", "IND", "BRA", "ZAF", "SAU", "ARG",
-    "AUS", "KOR", "MEX", "IDN", "TUR", "ARE",
+# ── Economy ranks (IMF 2024 nominal GDP, lower = larger economy) ──────────────
+# Top-50 economies by ISO-3 code. Everything else defaults to 999.
+_ECONOMY_RANK: dict[str, int] = {
+    "USA": 1,   # United States
+    "CHN": 2,   # China
+    "DEU": 3,   # Germany
+    "JPN": 4,   # Japan
+    "IND": 5,   # India
+    "GBR": 6,   # United Kingdom
+    "FRA": 7,   # France
+    "ITA": 8,   # Italy
+    "BRA": 9,   # Brazil
+    "CAN": 10,  # Canada
+    "RUS": 11,  # Russia
+    "KOR": 12,  # South Korea
+    "AUS": 13,  # Australia
+    "MEX": 14,  # Mexico
+    "IDN": 15,  # Indonesia
+    "SAU": 16,  # Saudi Arabia
+    "TUR": 17,  # Turkey
+    "CHE": 18,  # Switzerland
+    "ARE": 19,  # UAE
+    "NLD": 20,  # Netherlands
+    "POL": 21,  # Poland
+    "ARG": 22,  # Argentina
+    "BEL": 23,  # Belgium
+    "SWE": 24,  # Sweden
+    "ZAF": 25,  # South Africa
+    "NOR": 26,  # Norway
+    "ISR": 27,  # Israel
+    "AUT": 28,  # Austria
+    "NGA": 29,  # Nigeria
+    "IRE": 30,  # Ireland
+    "IRL": 30,  # Ireland (alternate ISO)
+    "EGY": 31,  # Egypt
+    "SGP": 32,  # Singapore
+    "DNK": 33,  # Denmark
+    "MYS": 34,  # Malaysia
+    "VNM": 35,  # Vietnam
+    "BGD": 36,  # Bangladesh
+    "PHL": 37,  # Philippines
+    "PAK": 38,  # Pakistan
+    "CHL": 39,  # Chile
+    "HUN": 40,  # Hungary
+    "FIN": 41,  # Finland
+    "COL": 42,  # Colombia
+    "ROM": 43,  # Romania
+    "ROU": 43,  # Romania (alternate ISO)
+    "NZL": 44,  # New Zealand
+    "CZE": 45,  # Czech Republic
+    "IRN": 46,  # Iran
+    "QAT": 47,  # Qatar
+    "PER": 48,  # Peru
+    "KAZ": 49,  # Kazakhstan
+    "ETH": 50,  # Ethiopia
 }
-_BRICS = {"CHN", "RUS", "IND", "BRA", "ZAF", "EGY", "ETH", "IRN", "ARE", "SAU"}
+
+_ECONOMY_RANK_DEFAULT = 999
 
 
-def _significance_tier(iso3: str) -> int:
-    if iso3 in _P5:
-        return 1
-    if iso3 in _G7:
-        return 2
-    if iso3 in _G20:
-        return 3
-    if iso3 in _BRICS:
-        return 4
-    return 5
+def _economy_rank(iso3: str) -> int:
+    return _ECONOMY_RANK.get(iso3.upper(), _ECONOMY_RANK_DEFAULT)
 
 
 # ── Data containers ───────────────────────────────────────────────────────────
@@ -218,9 +255,9 @@ def build_report_context(
 def _top_n_countries(votes: dict[str, str], n: int) -> list[str]:
     """
     Pick top-n countries ranked by:
-      1. Vote priority: No > Abstain > Yes > Absent
-      2. Within each vote group: significance tier (P5 > G7 > G20 > BRICS > rest)
-      3. Within same tier: alphabetical ISO-3
+      1. Vote priority: No > Abstain > Yes > Absent  (dissenting voices first)
+      2. Within each vote group: IMF 2024 GDP rank (larger economy = higher priority)
+      3. Tiebreaker: alphabetical ISO-3
     """
     vote_priority = {"no": 0, "abstain": 1, "yes": 2, "absent": 3, "not_member": 4}
 
@@ -228,7 +265,7 @@ def _top_n_countries(votes: dict[str, str], n: int) -> list[str]:
         votes.items(),
         key=lambda kv: (
             vote_priority.get(kv[1], 5),
-            _significance_tier(kv[0]),
+            _economy_rank(kv[0]),
             kv[0],
         ),
     )
