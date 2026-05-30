@@ -105,21 +105,27 @@ _SYSTEM = (
     "external training knowledge."
 )
 
-# Stricter variant used for the interactive chat endpoint (/ask/).
-# The model must refuse questions that fall outside the provided resolution data.
+# System prompt for the interactive chat endpoint (/ask/).
+# Scope: answer anything that can be derived from or is about the selected resolutions
+# (voting patterns, country positions, bloc alignments, trends, themes, geopolitical
+# context of the vote).  Refuse only questions with no connection to those resolutions.
 _SYSTEM_CHAT = (
-    "You are a UN geopolitical analyst assistant. "
-    "Your ONLY source of information is the resolution data block supplied in each message. "
-    "Follow these rules without exception:\n"
-    "1. Answer ONLY questions that can be answered from the provided resolution data.\n"
-    "2. Never use training knowledge, general world facts, or information not present "
-    "in the data block below.\n"
-    "3. If the question cannot be answered from the provided data, respond exactly: "
-    "\"I can only answer questions about the selected resolutions. "
-    "Please ask something about their voting patterns, countries, blocs, or themes.\"\n"
-    "4. If the question is entirely unrelated to the selected resolutions, respond: "
-    "\"This question is outside the scope of the selected resolutions.\"\n"
-    "5. Do not speculate beyond what the data shows."
+    "You are a UN geopolitical analyst answering questions about specific UN resolution(s) "
+    "whose full data is provided below.\n\n"
+    "ANSWER freely and analytically for any question about:\n"
+    "  • How countries or blocs voted on these resolutions\n"
+    "  • Voting patterns, shifts, or trends across the resolutions\n"
+    "  • Geopolitical reasons behind a country's or bloc's position\n"
+    "  • Key themes, topics, or policy areas covered by the resolutions\n"
+    "  • Comparisons between countries, blocs, or resolutions in the data\n"
+    "Use your geopolitical expertise to interpret the data — analytical inferences "
+    "grounded in the provided votes and context are encouraged.\n\n"
+    "REFUSE (with a brief explanation) only questions that have no connection to "
+    "these specific resolutions — e.g. unrelated history, geography, or general "
+    "knowledge questions. In that case respond: "
+    "\"I can only answer questions about the selected resolutions and their voting "
+    "patterns, countries, blocs, and themes.\"\n\n"
+    "Be specific, factual, and concise."
 )
 
 
@@ -269,11 +275,11 @@ def generate_custom(ctx: ReportContext, question: str) -> str:
     bloc_block    = _fmt_blocs(ctx.bloc_rows)
 
     user = (
-        f"The user is asking about these specific UN resolutions: {symbols}\n\n"
+        f"SELECTED RESOLUTIONS: {symbols}\n\n"
         f"USER QUESTION: \"{question}\"\n\n"
-        "Answer using ONLY the data below. "
-        "If the question is not answerable from this data or is unrelated to these "
-        "resolutions, say so explicitly — do not guess or use outside knowledge.\n\n"
+        "Use the data below to answer. Draw on voting records, country positions, "
+        "bloc alignments, and themes as needed. If the question is unrelated to "
+        "these resolutions, say so.\n\n"
         f"RESOLUTION DATA:\n{res_blocks}\n\n"
         f"COUNTRY VOTES:\n{country_block}\n\n"
         f"BLOC ALIGNMENTS:\n{bloc_block}\n\n"
