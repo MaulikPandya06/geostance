@@ -100,7 +100,26 @@ def _fmt_blocs(bloc_rows: list[BlocRow]) -> str:
 _SYSTEM = (
     "You are a senior UN geopolitical analyst producing a formal intelligence "
     "report. Write in clear, professional prose. Be specific and factual. "
-    "Do not add caveats or disclaimers. Use only the data provided."
+    "Do not add caveats or disclaimers. "
+    "Base every claim strictly on the resolution data provided — do not draw on "
+    "external training knowledge."
+)
+
+# Stricter variant used for the interactive chat endpoint (/ask/).
+# The model must refuse questions that fall outside the provided resolution data.
+_SYSTEM_CHAT = (
+    "You are a UN geopolitical analyst assistant. "
+    "Your ONLY source of information is the resolution data block supplied in each message. "
+    "Follow these rules without exception:\n"
+    "1. Answer ONLY questions that can be answered from the provided resolution data.\n"
+    "2. Never use training knowledge, general world facts, or information not present "
+    "in the data block below.\n"
+    "3. If the question cannot be answered from the provided data, respond exactly: "
+    "\"I can only answer questions about the selected resolutions. "
+    "Please ask something about their voting patterns, countries, blocs, or themes.\"\n"
+    "4. If the question is entirely unrelated to the selected resolutions, respond: "
+    "\"This question is outside the scope of the selected resolutions.\"\n"
+    "5. Do not speculate beyond what the data shows."
 )
 
 
@@ -243,28 +262,26 @@ Format: Use **Theme Name**: explanation format for the list."""
 
 
 def generate_custom(ctx: ReportContext, question: str) -> str:
-    """Section 6 — Custom question / country-specific full report."""
+    """Chat-style custom question scoped strictly to the provided resolutions."""
+    symbols       = ", ".join(r.un_symbol for r in ctx.resolutions)
     res_blocks    = "\n\n".join(_fmt_resolution(r) for r in ctx.resolutions)
     country_block = _fmt_countries(ctx.country_rows)
     bloc_block    = _fmt_blocs(ctx.bloc_rows)
 
-    user = f"""A geopolitical analyst has asked: "{question}"
-
-Use ONLY the data below to answer. Be specific, structured, and analytical.
-
-RESOLUTION DATA:
-{res_blocks}
-
-COUNTRY VOTES:
-{country_block}
-
-BLOC ALIGNMENTS:
-{bloc_block}
-
-TAGS: {", ".join(ctx.all_tags[:15])}"""
+    user = (
+        f"The user is asking about these specific UN resolutions: {symbols}\n\n"
+        f"USER QUESTION: \"{question}\"\n\n"
+        "Answer using ONLY the data below. "
+        "If the question is not answerable from this data or is unrelated to these "
+        "resolutions, say so explicitly — do not guess or use outside knowledge.\n\n"
+        f"RESOLUTION DATA:\n{res_blocks}\n\n"
+        f"COUNTRY VOTES:\n{country_block}\n\n"
+        f"BLOC ALIGNMENTS:\n{bloc_block}\n\n"
+        f"TAGS: {', '.join(ctx.all_tags[:15])}"
+    )
 
     time.sleep(_CALL_DELAY)
-    return _call(_SYSTEM, user)
+    return _call(_SYSTEM_CHAT, user)
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
