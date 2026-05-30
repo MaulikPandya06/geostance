@@ -95,22 +95,22 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="geovoice"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config(
-            "DB_PASSWORD",
-            default="postgres",
-        ),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
-    }
+    # "default": {
+    #     "ENGINE": "django.db.backends.postgresql",
+    #     "NAME": config("DB_NAME", default="geovoice"),
+    #     "USER": config("DB_USER", default="postgres"),
+    #     "PASSWORD": config(
+    #         "DB_PASSWORD",
+    #         default="postgres",
+    #     ),
+    #     "HOST": config("DB_HOST", default="localhost"),
+    #     "PORT": config("DB_PORT", default="5432"),
+    # }
 
     # Neon DB
-    # "default": dj_database_url.config(
-    #     default=os.environ.get("DATABASE_URL")
-    # )
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL")
+    )
 }
 
 
