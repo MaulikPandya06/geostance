@@ -145,6 +145,40 @@ Format:
     return _call(_SYSTEM, user)
 
 
+def generate_voting_behavior(ctx: ReportContext) -> str:
+    """Section 2 — Voting Behavior per Country."""
+    if ctx.is_multi:
+        symbols = [r.un_symbol for r in ctx.resolutions]
+        country_block = _fmt_countries_multi(ctx.country_rows, symbols)
+        prompt_extra = (
+            f"Multiple resolutions are being compared: {', '.join(symbols)}.\n"
+            "Highlight countries that changed their vote between resolutions."
+        )
+    else:
+        country_block = _fmt_countries(ctx.country_rows)
+        prompt_extra = ""
+
+    user = f"""Analyze the voting behavior of each of the following countries on the resolution(s).
+For each country write 1–2 sentences explaining:
+- What position they took (In Favour / Against / Abstaining)
+- The likely geopolitical reasoning behind their position
+- Any notable alignments or contradictions with their usual stance
+
+{prompt_extra}
+
+COUNTRIES AND VOTES:
+{country_block}
+
+RESOLUTION CONTEXT:
+{_fmt_resolution(ctx.resolutions[0])}
+
+Format: For each country use the format:
+**[Country Name]** ([Vote]): [analysis sentence(s)]"""
+
+    time.sleep(_CALL_DELAY)
+    return _call(_SYSTEM, user)
+
+
 def generate_bloc_analysis(ctx: ReportContext) -> str:
     """Section 3 — Bloc Alignments."""
     country_block = _fmt_countries(ctx.country_rows)
