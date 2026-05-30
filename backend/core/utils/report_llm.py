@@ -100,9 +100,10 @@ def _fmt_blocs(bloc_rows: list[BlocRow]) -> str:
 _SYSTEM = (
     "You are a senior UN geopolitical analyst producing a formal intelligence "
     "report. Write in clear, professional prose. Be specific and factual. "
-    "Do not add caveats or disclaimers. "
-    "Base every claim strictly on the resolution data provided — do not draw on "
-    "external training knowledge."
+    "Do not add caveats or disclaimers. Use only the data provided."
+    "If a question is completely unrelated to geopolitics or the UN "
+    "(e.g. cooking, coding, entertainment, math), respond: "
+    "\"I can only answer questions related to geopolitics and the United Nations.\""
 )
 
 # System prompt for the interactive chat endpoint (/ask/).
@@ -144,35 +145,28 @@ Format:
     return _call(_SYSTEM, user)
 
 
-def generate_voting_behavior(ctx: ReportContext) -> str:
-    """Section 2 — Voting Behavior per Country."""
-    if ctx.is_multi:
-        symbols = [r.un_symbol for r in ctx.resolutions]
-        country_block = _fmt_countries_multi(ctx.country_rows, symbols)
-        prompt_extra = (
-            f"Multiple resolutions are being compared: {', '.join(symbols)}.\n"
-            "Highlight countries that changed their vote between resolutions."
-        )
-    else:
-        country_block = _fmt_countries(ctx.country_rows)
-        prompt_extra = ""
+def generate_bloc_analysis(ctx: ReportContext) -> str:
+    """Section 3 — Bloc Alignments."""
+    country_block = _fmt_countries(ctx.country_rows)
+    bloc_block    = _fmt_blocs(ctx.bloc_rows)
+    res_block     = _fmt_resolution(ctx.resolutions[0])
 
-    user = f"""Analyze the voting behavior of each of the following countries on the resolution(s).
-For each country write 1–2 sentences explaining:
-- What position they took (In Favour / Against / Abstaining)
-- The likely geopolitical reasoning behind their position
-- Any notable alignments or contradictions with their usual stance
+    user = f"""Analyze the voting bloc alignments for this resolution.
+Cover:
+1. Which blocs voted cohesively and which were divided.
+2. Notable exceptions within blocs (e.g. a NATO member abstaining).
+3. The geopolitical meaning of these alignments — what do the splits reveal?
 
-{prompt_extra}
+RESOLUTION:
+{res_block}
 
-COUNTRIES AND VOTES:
+BLOC VOTING SUMMARY:
+{bloc_block}
+
+TOP COUNTRIES (for exceptions and examples):
 {country_block}
 
-RESOLUTION CONTEXT:
-{_fmt_resolution(ctx.resolutions[0])}
-
-Format: For each country use the format:
-**[Country Name]** ([Vote]): [analysis sentence(s)]"""
+Format: 3–4 structured paragraphs, one per major bloc group or theme."""
 
     time.sleep(_CALL_DELAY)
     return _call(_SYSTEM, user)
@@ -258,26 +252,28 @@ Format: Use **Theme Name**: explanation format for the list."""
 
 
 def generate_custom(ctx: ReportContext, question: str) -> str:
-    """Chat-style custom question scoped strictly to the provided resolutions."""
-    symbols       = ", ".join(r.un_symbol for r in ctx.resolutions)
+    """Section 6 — Custom question / country-specific full report."""
     res_blocks    = "\n\n".join(_fmt_resolution(r) for r in ctx.resolutions)
     country_block = _fmt_countries(ctx.country_rows)
     bloc_block    = _fmt_blocs(ctx.bloc_rows)
 
-    user = (
-        f"SELECTED RESOLUTIONS: {symbols}\n\n"
-        f"USER QUESTION: \"{question}\"\n\n"
-        "Use the data below to answer. Draw on voting records, country positions, "
-        "bloc alignments, and themes as needed. If the question is unrelated to "
-        "these resolutions, say so.\n\n"
-        f"RESOLUTION DATA:\n{res_blocks}\n\n"
-        f"COUNTRY VOTES:\n{country_block}\n\n"
-        f"BLOC ALIGNMENTS:\n{bloc_block}\n\n"
-        f"TAGS: {', '.join(ctx.all_tags[:15])}"
-    )
+    user = f"""A geopolitical analyst has asked: "{question}"
+
+Use ONLY the data below to answer. Be specific, structured, and analytical.
+
+RESOLUTION DATA:
+{res_blocks}
+
+COUNTRY VOTES:
+{country_block}
+
+BLOC ALIGNMENTS:
+{bloc_block}
+
+TAGS: {", ".join(ctx.all_tags[:15])}"""
 
     time.sleep(_CALL_DELAY)
-    return _call(_SYSTEM_CHAT, user)
+    return _call(_SYSTEM, user)
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
